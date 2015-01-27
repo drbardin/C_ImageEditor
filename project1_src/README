@@ -1,0 +1,86 @@
+Dan Bardin - drbardin
+
+
+
+
+1. How A '.simp' Image Is Stored
+
+Simp images are stored using an 'Image_File' struct with the following:
+
+	* 2 unsigned ints for the width and height of the .simp image.
+	* A nested 2D array of a struct typedef'd 'Pixel', described below.
+
+	A Pixel struct is a representation of a single pixel in the simp image. 
+	It contains four unsigned chars; red, green, blue and alpha. This allowed for easy and reliable access to each pixel, as well as each pixel's channel.
+
+
+2. Assumptions Made from Specification
+
+	Strict interpretation of input arguments. If there is deviation from order as shown in spec, it results in an error-specific message and termination of program. The only derivation from this is in colorshift, where all valid patterns are sent to upper-case. 
+
+	Source .simp files have been correctly converted from their previous file type. 
+
+	Input and output files must have .simp as an extention.
+
+	The equations provided for image overlay are correct. All computation of overlay equations are done with doubles, their output stored as unrounded integers, i.e., not rounded down if .1-.4, or up if .5-.9. 
+
+
+3. Source File List and File Descriptions 
+	
+Common Actions - crop.c, bw.c, shift.c, overlay.c
+		Main method for given executable. Done for simplicity, can be broken out later if blending of programs is required. 
+		
+		Takes in command line arguments and verifies/sanity-checks all passed parameters. 
+
+		Passes off for image reading, printing, or executable-specific operations.
+
+		Memory cleanup and stream closure.
+
+Unique Actions:
+	crop.c: 
+		No heavy lifting done, cropping is done in readwriteimage.c.
+
+	bw.c: 
+		Performs grayscale transformation using two 'for' loops. 
+		Transformation is done by averaging the values of r,g,b channels, and subsequently giving r,b,g this new value. Alpha channel is not changed. How great is math, by the way? 
+
+	shift.c:
+		Has functions shift2() & shift3(). Each function performs the colorshift macinations by taking in an Image_File struct and integer representing one of the 6 possible, valid patterns for 2/3 channel shifts respectively. 
+
+		Shifts are performed using switch with six case statements. Inside each case it is basic value re-assignment with a temp variable to save the jumping value before being over-written.
+
+	overlay.c:
+		Has function DrawPic2onPic1(). As can be gleaned from the function name, this will take two Image_File structs, and an (x,y) coordinate. The (x,y) is the "top-left" point on the base-layer image where the top-layer image will be drawn. 
+
+		The overlay is performed by using a formula specific to r,g,b, & a to properly integrate the images and blending the edges of the top-layer image into the bottom-layer as smoothly as possible. Once again, because math.  
+
+	readwriteimage.c
+		Has four functions, three handle file I/O for each program and the last free's an Image_File passed to it. 
+
+		ReadImageToMemory() takes a FILE pointer and an uninitialized Image_File struct pointer. It will then read the width and height of the file, storing it to the struct. With the width and height set, the 2D array of pixels can have it's memory allocated. The malloc operations are performed in nested for-loop which also reads from file and stores each pixel sequentially. 
+
+		WriteCropToFile() takes an output FILE pointer, Image_File pointer, and command line x,y,w,h. (x,y) is the top-left point the user specifies to start the crop at. W & H are the new dimensions the output image will be (bounds have been checked-previously). It then uses two for loops (one nested). 
+
+		The for-loop parameters are set as follows:
+			outh = y + h, outw = x + w
+			Rows start at pixel y, and continue until outh is met. 
+			Cols start at pixel x, and continue until outw is met.
+
+		This will loop over only the portion of the image the user wants outputted, writing each pixel it passes to the new output file. 
+
+		WriteBwShiftOverToFile() does the same basic operation as above, but loops the entire file and writing it to the new output file. 
+
+	readwriteimage.h
+		Header guards and function prototypes.
+
+	compare.c, compare.h
+		See (4)
+
+
+4. Extra features and programs
+
+	I created my version of compare using Dr. Stolee's idea for the compare found on the project webpage. It is a simple check, where it loads two simp files into separate Image_File structs and proceeds to loop over each pixel. For each pixel it compares the decimal value of A & B and if it is different, it will print a message stating that it found a difference at pixel[r][c] and then print the respective values. It was used mostly with overlay to find errors in rounding logic. 
+
+	For any given error in the program, it will output a simple message for the error, be it input, parameters, file paths, etc. 
+
+
